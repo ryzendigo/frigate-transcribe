@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+{% block title %}Speakers — {{ camera }}{% endblock %}
+{% block content %}
+<header><h1>Speakers</h1></header>
+
+<form method="post" action="/api/speakers" class="speaker-add">
+  <input type="text" name="name" placeholder="New speaker name" required>
+  <input type="text" name="notes" placeholder="Notes (optional)">
+  <button type="submit">Add</button>
+</form>
+
+<table class="segments-table">
+  <thead><tr><th></th><th>Name</th><th>Segments</th><th>Added</th><th></th></tr></thead>
+  <tbody>
+    {% for sp in speakers %}
+      <tr>
+        <td><span class="speaker-swatch" style="background: {{ sp.name|speaker_color }}"></span></td>
+        <td><a href="/speakers/{{ sp.id }}">{{ sp.name }}</a></td>
+        <td>{{ sp.segment_count }}</td>
+        <td class="muted">{{ sp.created_at }}</td>
+        <td>
+          <form method="post" action="/api/speakers/{{ sp.id }}/delete"
+                onsubmit="return confirm('Delete speaker {{ sp.name }}? Segments will become Unknown.');">
+            <button type="submit" class="danger">Delete</button>
+          </form>
+        </td>
+      </tr>
+    {% endfor %}
+  </tbody>
+</table>
+<p class="muted">
+  Speakers are identified by voice embeddings. When you assign a name to a few segments
+  (tick "propagate"), future speech matching that voice will be auto-labelled.
+  Bulk-label whole <a href="/clusters">voice clusters</a> to bootstrap faster.
+</p>
+{% endblock %}

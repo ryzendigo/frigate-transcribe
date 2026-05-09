@@ -1,0 +1,50 @@
+{% set s_name = seg.speaker_name or 'Unknown' %}
+{% set s_color = s_name|speaker_color %}
+{% set s_unconfirmed = seg.speaker_id and not seg.speaker_locked %}
+<tr id="segment-{{ seg.id }}" class="seg-row{% if s_unconfirmed %} unconfirmed{% endif %}" data-seg-id="{{ seg.id }}" data-speaker="{{ s_name }}" style="--speaker-color: {{ s_color }}">
+  <td class="ts">{{ seg.start_ts[11:19] }}</td>
+  <td class="speaker-cell">
+    <span class="speaker-chip{% if s_unconfirmed %} unconfirmed{% endif %}" style="--c: {{ s_color }}" title="{% if s_unconfirmed %}Auto-attributed (not user-confirmed){% else %}{{ s_name }}{% endif %}">{{ s_name }}{% if s_unconfirmed %}<span class="auto-mark" aria-hidden="true">?</span>{% endif %}</span>
+    {% if suggestion %}
+      <form hx-post="/api/segments/{{ seg.id }}/speaker" hx-target="#segment-{{ seg.id }}" hx-swap="outerHTML" class="suggestion-form">
+        <input type="hidden" name="speaker_id" value="{{ suggestion.speaker_id }}">
+        <input type="hidden" name="propagate" value="">
+        <button type="submit" class="suggestion-pill" style="--c: {{ suggestion.color }}" title="Accept suggested speaker">
+          ≈ {{ suggestion.name }} <span class="muted">{{ (suggestion.similarity*100)|round }}%</span>
+        </button>
+      </form>
+    {% endif %}
+    <details class="row-editor">
+      <summary class="row-editor-toggle">label</summary>
+      <form hx-post="/api/segments/{{ seg.id }}/speaker" hx-target="#segment-{{ seg.id }}" hx-swap="outerHTML" class="speaker-form">
+        <select name="speaker_id">
+          <option value="__none__" {% if not seg.speaker_id %}selected{% endif %}>— Unknown —</option>
+          {% for sp in speakers %}
+            <option value="{{ sp.id }}" {% if seg.speaker_id == sp.id %}selected{% endif %}>{{ sp.name }}</option>
+          {% endfor %}
+          <option value="__new__">+ New speaker…</option>
+        </select>
+        <input type="text" name="new_name" placeholder="Name" class="new-name">
+        <label class="propagate-lbl" title="Also label other unlabeled segments whose voice matches"><input type="checkbox" name="propagate" value="1" checked> propagate</label>
+        <button type="submit">Save</button>
+      </form>
+    </details>
+  </td>
+  <td class="text">
+    <span class="seg-text">{{ seg.text|highlight_mentions }}</span>
+  </td>
+  <td class="audio-cell">
+    {% if seg.chunk_file %}
+      <audio controls preload="none" src="/api/segments/{{ seg.id }}/audio"></audio>
+    {% else %}
+      <span class="muted">—</span>
+    {% endif %}
+  </td>
+  <td class="row-actions">
+    <button class="icon" title="Edit text"
+            hx-get="/api/segments/{{ seg.id }}/edit" hx-target="#segment-{{ seg.id }}" hx-swap="outerHTML">✎</button>
+    <button class="icon danger" title="Delete segment"
+            hx-post="/api/segments/{{ seg.id }}/delete" hx-target="#segment-{{ seg.id }}" hx-swap="outerHTML"
+            hx-confirm="Delete this segment?">×</button>
+  </td>
+</tr>

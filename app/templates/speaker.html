@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+{% block title %}{{ speaker.name }} — {{ camera }}{% endblock %}
+{% block content %}
+<header class="day-header">
+  <h1><span class="speaker-chip" style="--c: {{ speaker.name|speaker_color }}">{{ speaker.name }}</span></h1>
+</header>
+{% if speaker.notes %}<p class="muted">{{ speaker.notes }}</p>{% endif %}
+
+<section class="at-a-glance">
+  <div class="ataglance-totals">
+    <div><strong>{{ stats.segment_count }}</strong><span>segments</span></div>
+    <div><strong>{{ stats.total_seconds|fmt_duration }}</strong><span>spoken</span></div>
+  </div>
+</section>
+
+<section class="merge-panel">
+  <form method="post" action="/api/speakers/{{ speaker.id }}/merge">
+    <label>Merge this speaker into
+      <select name="into_id" required>
+        <option value="">— pick another —</option>
+        {% for sp in other_speakers %}
+          <option value="{{ sp.id }}">{{ sp.name }}</option>
+        {% endfor %}
+      </select>
+    </label>
+    <button type="submit" class="danger" onclick="return confirm('Move all segments from {{ speaker.name }} into the selected speaker and delete {{ speaker.name }}?')">Merge</button>
+  </form>
+  <form method="post" action="/api/speakers/{{ speaker.id }}/rename">
+    <label>Rename to <input type="text" name="name" value="{{ speaker.name }}" required></label>
+    <button type="submit">Rename</button>
+  </form>
+</section>
+
+<table class="segments-table">
+  <thead><tr><th>When</th><th>Text</th><th>Audio</th></tr></thead>
+  <tbody>
+    {% for seg in segments %}
+      <tr>
+        <td><a href="/day/{{ seg.start_ts[0:10] }}#segment-{{ seg.id }}">{{ seg.start_ts|fmt_ts }}</a></td>
+        <td>{{ seg.text }}</td>
+        <td>{% if seg.chunk_file %}<audio controls preload="none" src="/api/segments/{{ seg.id }}/audio"></audio>{% endif %}</td>
+      </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% endblock %}

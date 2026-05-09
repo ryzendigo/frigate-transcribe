@@ -1,0 +1,12 @@
+{% extends "base.html" %}
+{% block title %}Summary {{ date }} — {{ camera }}{% endblock %}
+{% block content %}
+<header class="day-header">
+  <h1>Summary — {{ date }}</h1>
+  <div class="day-nav">
+    <a href="/day/{{ date }}">Open transcript →</a>
+  </div>
+</header>
+<p class="muted">{{ summary.segment_count }} segments · generated {{ summary.created_at }}</p>
+<pre class="summary-body">{{ summary.summary|linkify_summary(date) }}</pre>
+{% endblock %}

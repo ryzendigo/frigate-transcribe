@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>{% block title %}Transcripts — {{ camera }}{% endblock %}</title>
+  <link rel="stylesheet" href="/static/app.css">
+  <script src="https://unpkg.com/htmx.org@1.9.12"></script>
+  <script defer src="/static/app.js"></script>
+  {% block head_extra %}{% endblock %}
+</head>
+<body>
+  <nav class="topbar">
+    <div class="brand">
+      <a href="/">Transcripts</a>
+      <span class="camera-chip">{{ camera }}</span>
+    </div>
+    <div class="links">
+      <a href="/">Today</a>
+      <a href="/summaries">Summaries</a>
+      <a href="/speakers">Speakers</a>
+      <a href="/mentions">Mentions</a>
+      <a href="/clusters">Clusters</a>
+      <form action="/search" method="get" class="search-form">
+        <input type="search" name="q" placeholder="Search…  (press /)" value="{{ request.query_params.get('q', '') }}" id="global-search">
+      </form>
+    </div>
+  </nav>
+  <main class="container">
+    {% block content %}{% endblock %}
+  </main>
+  <footer class="keyhint muted">
+    <kbd>/</kbd> search · <kbd>n</kbd>/<kbd>p</kbd> next/prev day · <kbd>j</kbd>/<kbd>k</kbd> segments · <kbd>e</kbd> edit · <kbd>.</kbd> latest
+  </footer>
+</body>
+</html>

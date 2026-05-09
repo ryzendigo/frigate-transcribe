@@ -1,0 +1,22 @@
+services:
+  frigate-transcribe:
+    container_name: frigate-transcribe
+    build: .
+    restart: unless-stopped
+    env_file:
+      - .env
+    ports:
+      - "8767:8767"
+    volumes:
+      - ./data:/data
+      - ./models:/models
+    mem_limit: 8g
+    cpus: 6
+    networks:
+      - frigate-net
+
+networks:
+  frigate-net:
+    # Set this to whatever network your Frigate container is on so
+    # rtsp://frigate:8554/<camera> resolves.
+    external: true

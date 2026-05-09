@@ -1,0 +1,190 @@
+{% extends "base.html" %}
+{% block title %}{{ date }} — {{ camera }}{% endblock %}
+{% block head_extra %}{% endblock %}
+{% block content %}
+<header class="day-header" data-date="{{ date }}" data-prev="{{ prev_date }}" data-next="{{ next_date }}">
+  <h1>
+    {{ date }}
+    {% if is_today %}<span class="live-pill">LIVE</span>{% endif %}
+  </h1>
+  <div class="day-nav">
+    <a href="/day/{{ prev_date }}" accesskey="p">&larr; {{ prev_date }}</a>
+    <a href="/day/{{ next_date }}" accesskey="n">{{ next_date }} &rarr;</a>
+    {% if is_today %}
+      <a href="/day/{{ date }}" class="refresh-btn" title="Reload page (or press . to jump to latest)">↻ Refresh</a>
+    {% endif %}
+  </div>
+</header>
+
+<aside class="date-picker">
+  <strong>Recent days:</strong>
+  {% for d in dates %}
+    <a href="/day/{{ d.day }}" class="{% if d.day == date %}current{% endif %}">{{ d.day }} <span class="muted">({{ d.n }})</span></a>
+  {% endfor %}
+</aside>
+
+{% if stats.per_speaker %}
+<section class="speaker-strip" aria-label="speakers heard today">
+  {% for sp in stats.per_speaker %}
+    {% set seconds_ago = ((now - sp.last_ts).total_seconds() if (sp.last_ts and now) else None) %}
+    {% set sp_id = speaker_name_to_id.get(sp.name) %}
+    <a class="speaker-tile" href="{% if sp_id %}/day/{{ date }}?speaker_id={{ sp_id }}{% elif sp.name == 'Unknown' %}/day/{{ date }}{% else %}/day/{{ date }}{% endif %}"
+       style="--c: {{ sp.color }}"
+       title="{{ sp.segment_count }} segments · {{ sp.speech_seconds|fmt_duration }}{% if sp.last_ts %} · last heard {{ sp.last_ts.strftime('%H:%M') }}{% endif %}">
+      <span class="speaker-tile-chip">{{ sp.name }}</span>
+      <span class="speaker-tile-meta">
+        <strong>{{ sp.speech_seconds|fmt_duration }}</strong>
+        {% if sp.last_ts and is_today and seconds_ago is not none %}
+          <span class="muted">· {% if seconds_ago < 120 %}just now{% elif seconds_ago < 3600 %}{{ (seconds_ago/60)|round|int }}m ago{% else %}{{ (seconds_ago/3600)|round|int }}h ago{% endif %}</span>
+        {% elif sp.last_ts %}
+          <span class="muted">· last {{ sp.last_ts.strftime('%H:%M') }}</span>
+        {% endif %}
+      </span>
+    </a>
+  {% endfor %}
+</section>
+{% endif %}
+
+<section class="at-a-glance">
+  <div class="ataglance-totals">
+    <div><strong>{{ stats.segment_count }}</strong><span>segments</span></div>
+    <div><strong>{{ stats.total_seconds|fmt_duration }}</strong><span>spoken</span></div>
+    <div><strong>{{ stats.distinct_speakers }}</strong><span>named speakers</span></div>
+    {% if unknown_count %}
+      <div><strong>{{ unknown_count }}</strong><span>unknown</span></div>
+    {% endif %}
+    {% for term in watchlist %}
+      <a class="ataglance-mention{% if not mention_counts.get(term) %} dim{% endif %}" href="#mentions">
+        <strong>{{ mention_counts.get(term, 0) }}</strong><span>{{ term }}</span>
+      </a>
+    {% endfor %}
+    {% if stats.first_ts and stats.last_ts %}
+      <div><strong>{{ stats.first_ts.strftime("%H:%M") }} – {{ stats.last_ts.strftime("%H:%M") }}</strong><span>active range</span></div>
+    {% endif %}
+    <div><strong>{{ blocks|length }}</strong><span>conversations</span></div>
+  </div>
+
+  <div class="right-pane">
+    {% if stats.per_speaker %}
+      <div class="speaker-bars">
+        {% for sp in stats.per_speaker %}
+          <div class="speaker-bar-row">
+            <span class="speaker-chip" style="--c: {{ sp.color }}">{{ sp.name }}</span>
+            <div class="speaker-bar-track">
+              <div class="speaker-bar-fill" style="width: {{ (sp.speech_seconds / stats.max_speech * 100)|round(1) }}%; background: {{ sp.color }}"></div>
+            </div>
+            <div class="speaker-bar-value">{{ sp.speech_seconds|fmt_duration }} · {{ sp.segment_count }}</div>
+          </div>
+        {% endfor %}
+      </div>
+    {% endif %}
+  </div>
+</section>
+
+<section class="timeline" aria-label="hourly speech heatmap">
+  <div class="timeline-bars">
+    {% for b in timeline %}
+      <a class="timeline-bar" href="#time-{{ "%02d"|format(b.hour) }}-00" title="{{ "%02d:00"|format(b.hour) }} — {{ b.total_s|fmt_duration }}" aria-label="{{ "%02d:00"|format(b.hour) }} {{ b.total_s|fmt_duration }}">
+        <span class="tb-track">
+          <span class="tb-fill" style="height: {{ b.height_pct }}%">
+            {% for st in b.stacks %}
+              <span class="tb-stack" style="flex: {{ st.pct_of_hour }}; background: {{ st.color }}"></span>
+            {% endfor %}
+          </span>
+        </span>
+        <span class="tb-label">{{ "%02d"|format(b.hour) }}</span>
+      </a>
+    {% endfor %}
+  </div>
+</section>
+
+{% if watchlist and mention_counts.values()|select|list %}
+<section class="mentions-panel" id="mentions">
+  <h2>Mentions</h2>
+  {% for term in watchlist %}
+    {% if mentions.get(term) %}
+      <details class="mention-bucket" open>
+        <summary><strong class="mention-term">{{ term }}</strong> <span class="muted">{{ mentions[term]|length }}×</span></summary>
+        <table class="segments-table mention-table">
+          <tbody>
+            {% for s in mentions[term] %}
+              {% set name = s.speaker_name or 'Unknown' %}
+              <tr>
+                <td class="ts"><a href="#segment-{{ s.id }}">{{ s.start_ts[11:19] }}</a></td>
+                <td class="speaker-cell-narrow"><span class="speaker-chip tiny" style="--c: {{ name|speaker_color }}">{{ name }}</span></td>
+                <td class="text">{{ s.text|highlight_mentions([term]) }}</td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </details>
+    {% endif %}
+  {% endfor %}
+</section>
+{% endif %}
+
+<section class="summary-preview">
+  <h2>End-of-day summary {% if summary_row %}<span class="muted tiny">· refreshed {{ summary_row.created_at }}</span>{% endif %}</h2>
+  {% if summary_row %}
+    <pre>{{ summary_row.summary|linkify_summary(date) }}</pre>
+    <div class="summary-actions">
+      <a class="muted" href="/summaries/{{ date }}">Open summary page →</a>
+      <button type="button" class="secondary" data-copy="summary">Copy</button>
+      <form method="post" action="/api/summary/now" style="display:inline">
+        <input type="hidden" name="date" value="{{ date }}">
+        <button type="submit" class="secondary">Regenerate</button>
+      </form>
+    </div>
+  {% else %}
+    <p class="muted">No summary yet. Midnight run is scheduled for {{ summary_time }} local; today rolling updates every hour at :05. Generate one now:</p>
+    <form method="post" action="/api/summary/now">
+      <input type="hidden" name="date" value="{{ date }}">
+      <button type="submit">Summarise {{ "so far" if is_today else "this day" }}</button>
+    </form>
+  {% endif %}
+</section>
+
+<form method="get" action="/day/{{ date }}" class="day-filters">
+  <label><input type="checkbox" name="hide_unknown" value="1" {% if hide_unknown %}checked{% endif %} onchange="this.form.submit()"> hide Unknown</label>
+  <label>Speaker
+    <select name="speaker_id" onchange="this.form.submit()">
+      <option value="">all</option>
+      {% for sp in speakers %}
+        <option value="{{ sp.id }}" {% if filter_speaker_id == sp.id %}selected{% endif %}>{{ sp.name }}</option>
+      {% endfor %}
+    </select>
+  </label>
+  {% if hide_unknown or filter_speaker_id %}
+    <a class="muted" href="/day/{{ date }}">clear filters</a>
+  {% endif %}
+  <div class="filter-right muted">{{ segments|length }} of {{ all_segments|length }} shown</div>
+</form>
+
+<section class="segments" id="segments">
+  {% if not blocks %}
+    <p class="muted">No speech captured yet for this date{% if hide_unknown or filter_speaker_id %} (with current filters){% endif %}.</p>
+  {% else %}
+    {% for block in blocks %}
+      <details class="conv-block" open id="time-{{ "%02d"|format(block.start_ts.hour) }}-{{ "%02d"|format(block.start_ts.minute) }}">
+        <summary class="conv-block-header">
+          <span class="conv-time">{{ block.start_ts.strftime("%H:%M") }} – {{ block.end_ts.strftime("%H:%M") }}</span>
+          <span class="conv-meta">
+            <span class="muted">{{ block.duration_s|fmt_duration }} · {{ block.segment_count }} seg</span>
+            {% for name in block.speakers|sort %}
+              <span class="speaker-chip tiny" style="--c: {{ name|speaker_color }}">{{ name }}</span>
+            {% endfor %}
+          </span>
+        </summary>
+        <table class="segments-table">
+          <tbody>
+            {% for seg in block.segments %}
+              {% set suggestion = suggestions.get(seg.id) %}
+              {% include "_segment_row.html" %}
+            {% endfor %}
+          </tbody>
+        </table>
+      </details>
+    {% endfor %}
+  {% endif %}
+</section>
+{% endblock %}

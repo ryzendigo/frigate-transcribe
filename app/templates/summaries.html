@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+{% block title %}Summaries — {{ camera }}{% endblock %}
+{% block content %}
+<header><h1>Daily summaries</h1></header>
+{% if not summaries %}
+  <p class="muted">No summaries yet. The first one runs tonight.</p>
+{% else %}
+  <table class="segments-table">
+    <thead><tr><th>Date</th><th>Segments</th><th>TL;DR</th></tr></thead>
+    <tbody>
+      {% for s in summaries %}
+        <tr>
+          <td><a href="/summaries/{{ s.summary_date }}">{{ s.summary_date }}</a></td>
+          <td>{{ s.segment_count }}</td>
+          <td>{{ s.summary.split('\n', 1)[0] }}</td>
+        </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+{% endif %}
+{% endblock %}

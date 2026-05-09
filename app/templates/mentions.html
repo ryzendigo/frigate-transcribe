@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+{% block title %}Mentions — {{ camera }}{% endblock %}
+{% block content %}
+<header><h1>Mentions across all time</h1></header>
+
+<form class="filters" method="get" action="/mentions">
+  <label>Term
+    <select name="term">
+      <option value="">all watchlist</option>
+      {% for t in watchlist %}
+        <option value="{{ t }}" {% if active_term.lower() == t.lower() %}selected{% endif %}>{{ t }}</option>
+      {% endfor %}
+    </select>
+  </label>
+  <label>From <input type="date" name="date_from" value="{{ date_from }}"></label>
+  <label>To <input type="date" name="date_to" value="{{ date_to }}"></label>
+  <button type="submit">Filter</button>
+</form>
+
+{% for term, rows in per_term.items() %}
+  <section class="mentions-panel">
+    <h2><span class="mention-term">{{ term }}</span> <span class="muted">— {{ rows|length }} hits</span></h2>
+    {% if not rows %}
+      <p class="muted">Nothing yet.</p>
+    {% else %}
+      <table class="segments-table">
+        <tbody>
+          {% for s in rows %}
+            {% set name = s.speaker_name or 'Unknown' %}
+            <tr>
+              <td class="ts"><a href="/day/{{ s.start_ts[0:10] }}#segment-{{ s.id }}">{{ s.start_ts|fmt_ts }}</a></td>
+              <td class="speaker-cell-narrow"><span class="speaker-chip tiny" style="--c: {{ name|speaker_color }}">{{ name }}</span></td>
+              <td class="text">{{ s.text|highlight_mentions([term]) }}</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    {% endif %}
+  </section>
+{% endfor %}
+{% endblock %}

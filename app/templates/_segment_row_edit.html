@@ -1,0 +1,19 @@
+{% set s_name = seg.speaker_name or 'Unknown' %}
+{% set s_color = s_name|speaker_color %}
+<tr id="segment-{{ seg.id }}" class="seg-row editing" data-seg-id="{{ seg.id }}" style="--speaker-color: {{ s_color }}">
+  <td class="ts">{{ seg.start_ts[11:19] }}</td>
+  <td class="speaker-cell">
+    <span class="speaker-chip" style="--c: {{ s_color }}">{{ s_name }}</span>
+  </td>
+  <td class="text" colspan="2">
+    <form hx-post="/api/segments/{{ seg.id }}/text" hx-target="#segment-{{ seg.id }}" hx-swap="outerHTML" class="text-edit-form">
+      <textarea name="text" rows="2" autofocus>{{ seg.text }}</textarea>
+      <div class="text-edit-actions">
+        <button type="submit">Save</button>
+        <button type="button" class="secondary"
+                hx-get="/api/segments/{{ seg.id }}/view" hx-target="#segment-{{ seg.id }}" hx-swap="outerHTML">Cancel</button>
+      </div>
+    </form>
+  </td>
+  <td class="row-actions"></td>
+</tr>

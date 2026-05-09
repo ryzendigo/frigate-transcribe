@@ -1,0 +1,60 @@
+{% extends "base.html" %}
+{% block title %}Voice clusters — {{ camera }}{% endblock %}
+{% block content %}
+<header><h1>Voice clusters of unknown speakers</h1></header>
+
+<form class="filters" method="get" action="/clusters">
+  <label>Min size <input type="number" name="min_size" value="{{ min_size }}" min="2" max="50"></label>
+  <label>Similarity ≥ <input type="number" step="0.01" name="threshold" value="{{ threshold }}" min="0.5" max="0.95"></label>
+  <button type="submit">Recompute</button>
+  <span class="muted">{{ clusters|length }} cluster(s) with ≥ {{ min_size }} members</span>
+</form>
+
+{% if not clusters %}
+  <p class="muted">No clusters yet. Once you have a good pool of unlabeled segments with embeddings, they'll group here by voice similarity so you can bulk-label an entire cluster in one click.</p>
+{% endif %}
+
+{% for c in clusters %}
+  <section class="cluster">
+    <header class="cluster-header">
+      <div>
+        <strong>Cluster {{ c.cluster_id }}</strong> · {{ c.size }} segments
+        {% if c.best %}
+          · closest named match: <span class="speaker-chip tiny" style="--c: {{ c.best.color }}">{{ c.best.name }}</span> {{ (c.best.similarity*100)|round }}%
+        {% endif %}
+      </div>
+    </header>
+    <table class="segments-table">
+      <tbody>
+        {% for s in c.samples %}
+          <tr>
+            <td class="ts">{{ s.start_ts|fmt_ts }}</td>
+            <td class="text"><a href="/day/{{ s.start_ts[0:10] }}#segment-{{ s.id }}">{{ s.text }}</a></td>
+            <td class="audio-cell">
+              {% if s.chunk_file %}
+                <audio controls preload="none" src="/api/segments/{{ s.id }}/audio"></audio>
+              {% endif %}
+            </td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    <form method="post" action="/api/clusters/label" class="cluster-label-form">
+      <input type="hidden" name="segment_ids" value='{{ c.member_ids_json }}'>
+      <label>Label all {{ c.size }} segments as
+        <select name="speaker_id" onchange="this.nextElementSibling.style.display=this.value=='__new__'?'inline-block':'none'">
+          {% if c.best %}<option value="{{ c.best.speaker_id }}" selected>{{ c.best.name }} (suggested)</option>{% endif %}
+          {% for sp in speakers %}
+            {% if not c.best or sp.id != c.best.speaker_id %}
+              <option value="{{ sp.id }}">{{ sp.name }}</option>
+            {% endif %}
+          {% endfor %}
+          <option value="__new__">+ New speaker…</option>
+        </select>
+      </label>
+      <input type="text" name="new_name" placeholder="Name" style="display:none">
+      <button type="submit">Label cluster</button>
+    </form>
+  </section>
+{% endfor %}
+{% endblock %}
