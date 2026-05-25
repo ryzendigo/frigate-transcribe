@@ -81,6 +81,12 @@ LLM_CORRECTION_MODEL = _env("TRANSCRIBE_LLM_CORRECTION_MODEL",
                             default="gemini-2.5-flash-lite")
 LLM_CORRECTION_CONTEXT_LINES = int(_env("TRANSCRIBE_LLM_CORRECTION_CONTEXT_LINES",
                                         default="20"))
+# Optional free-form context appended to the correction prompt — describe
+# anything about your environment that helps the model guess better, e.g.
+# "kids often sing made-up songs; a TV is usually on; dogs named Milo and
+# Mila". Leave blank to omit.
+LLM_CORRECTION_EXTRA_CONTEXT = _env("TRANSCRIBE_CORRECTION_EXTRA_CONTEXT",
+                                    default="").strip()
 DATA_DIR = pathlib.Path(_env("DATA_DIR", default="/data"))
 MODELS_DIR = pathlib.Path(_env("MODELS_DIR", default="/models"))
 CHUNKS_DIR = DATA_DIR / "chunks"
@@ -270,6 +276,10 @@ def llm_correct_lines(lines: list[str]) -> list[str]:
         f"Names that may appear: {', '.join(SPEAKER_NAMES)}. "
         if SPEAKER_NAMES else ""
     )
+    extra_context_clause = (
+        f"{LLM_CORRECTION_EXTRA_CONTEXT}\n\n"
+        if LLM_CORRECTION_EXTRA_CONTEXT else ""
+    )
     prompt = (
         "You are aggressively correcting a low-quality speech-to-text "
         f"transcript captured by a distant microphone in {LOCATION_HINT}. "
@@ -278,6 +288,12 @@ def llm_correct_lines(lines: list[str]) -> list[str]:
         "lines into what was MOST PLAUSIBLY actually said, using "
         f"{DIALECT_HINT} and the conversation context.\n\n"
         f"{names_clause}Casual swearing is normal; preserve it.\n\n"
+        f"{extra_context_clause}"
+        "BACKGROUND MEDIA: TVs, radios, music, and children singing are a "
+        "common source of gibberish here. Do NOT turn obvious song lyrics, "
+        "jingles, or TV-dialogue bleed into invented conversation — if a line "
+        "is clearly sung or musical filler with no real conversational "
+        "meaning, leave it unchanged rather than fabricating speech.\n\n"
         "TREAT THESE AS NONSENSE TO REWRITE:\n"
         "- Phrases that don't make literal sense: rewrite to a plausible "
         "utterance whose phonemes match the raw line.\n"
